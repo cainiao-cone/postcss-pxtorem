@@ -66,14 +66,11 @@ module.exports = postcss.plugin("postcss-vwtorem", options => {
       )
         return;
 
-      console.log("decl.value: ", decl.value);
-
       let value = "";
       if (decl.value.indexOf("vw") !== -1) {
         value = decl.value.replace(pxRegex, pxReplace);
       } else {
         value = decl.value.replace(rpxRegex, rpxReplace);
-        console.log("value: ", value);
       }
 
       // if rem unit already exists, do not add or replace
@@ -137,7 +134,6 @@ function createPxReplace(rootValue, unitPrecision, minPixelValue, opts) {
 }
 function createRpxReplace(rootValue, unitPrecision, minPixelValue) {
   return (m, $1) => {
-    console.log("$1: ", $1);
     if (!$1) return m;
     const pixels = parseFloat($1) * 2;
     if (pixels < minPixelValue) return m;
