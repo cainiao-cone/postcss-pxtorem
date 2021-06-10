@@ -4,6 +4,7 @@ const filterPropList = require("./lib/filter-prop-list");
 const type = require("./lib/type");
 
 const defaults = {
+  viewportWidth: 750, //px转vw时的宽度设置是多少
   rootValue: 16,
   unitPrecision: 5,
   selectorBlackList: [],
@@ -23,7 +24,7 @@ const legacyOptions = {
   propWhiteList: "propList"
 };
 
-module.exports = postcss.plugin("postcss-pxtorem", options => {
+module.exports = postcss.plugin("postcss-vwtorem", options => {
   convertLegacyOptions(options);
   const opts = Object.assign({}, defaults, options);
   const satisfyPropList = createPropListMatcher(opts.propList);
@@ -47,12 +48,13 @@ module.exports = postcss.plugin("postcss-pxtorem", options => {
     const pxReplace = createPxReplace(
       rootValue,
       opts.unitPrecision,
-      opts.minPixelValue
+      opts.minPixelValue,
+      opts
     );
 
     css.walkDecls((decl, i) => {
       if (
-        decl.value.indexOf("px") === -1 ||
+        decl.value.indexOf("vw") === -1 ||
         !satisfyPropList(decl.prop) ||
         blacklistedSelector(opts.selectorBlackList, decl.parent.selector)
       )
@@ -72,7 +74,7 @@ module.exports = postcss.plugin("postcss-pxtorem", options => {
 
     if (opts.mediaQuery) {
       css.walkAtRules("media", rule => {
-        if (rule.params.indexOf("px") === -1) return;
+        if (rule.params.indexOf("vw") === -1) return;
         rule.params = rule.params.replace(pxRegex, pxReplace);
       });
     }
@@ -100,10 +102,12 @@ function convertLegacyOptions(options) {
   });
 }
 
-function createPxReplace(rootValue, unitPrecision, minPixelValue) {
+function createPxReplace(rootValue, unitPrecision, minPixelValue, opts) {
   return (m, $1) => {
     if (!$1) return m;
-    const pixels = parseFloat($1);
+    const { viewportWidth } = opts; // 转成vw时px的屏幕宽度
+    const viewportVal = parseFloat($1);
+    const pixels = (viewportVal / 100) * viewportWidth; // 先转成px
     if (pixels < minPixelValue) return m;
     const fixedVal = toFixed(pixels / rootValue, unitPrecision);
     return fixedVal === 0 ? "0" : fixedVal + "rem";
