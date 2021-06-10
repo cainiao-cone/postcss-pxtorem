@@ -22,6 +22,14 @@ describe("vwtorem", function() {
     expect(processed).toBe(output);
   });
 
+  it("should replace the rpx unit with rem", function() {
+    var input = "h1 { font-size: 32rpx; }";
+    var output = "h1 { font-size: 4rem; }";
+    var processed = postcss(vwtorem()).process(input).css;
+
+    expect(processed).toBe(output);
+  });
+
   it("should replace the vw unit with rem", function() {
     var processed = postcss(vwtorem()).process(basicCSS).css;
     var expected = ".rule { font-size: 0.9375rem }";

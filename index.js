@@ -1,5 +1,6 @@
 const postcss = require("postcss");
 const pxRegex = require("./lib/pixel-unit-regex");
+const rpxRegex = require("./lib/rpixel-unit-regex");
 const filterPropList = require("./lib/filter-prop-list");
 const type = require("./lib/type");
 
@@ -51,16 +52,29 @@ module.exports = postcss.plugin("postcss-vwtorem", options => {
       opts.minPixelValue,
       opts
     );
+    const rpxReplace = createRpxReplace(
+      rootValue,
+      opts.unitPrecision,
+      opts.minPixelValue
+    );
 
     css.walkDecls((decl, i) => {
       if (
-        decl.value.indexOf("vw") === -1 ||
+        (decl.value.indexOf("vw") === -1 && decl.value.indexOf("rpx") === -1) ||
         !satisfyPropList(decl.prop) ||
         blacklistedSelector(opts.selectorBlackList, decl.parent.selector)
       )
         return;
 
-      const value = decl.value.replace(pxRegex, pxReplace);
+      console.log("decl.value: ", decl.value);
+
+      let value = "";
+      if (decl.value.indexOf("vw") !== -1) {
+        value = decl.value.replace(pxRegex, pxReplace);
+      } else {
+        value = decl.value.replace(rpxRegex, rpxReplace);
+        console.log("value: ", value);
+      }
 
       // if rem unit already exists, do not add or replace
       if (declarationExists(decl.parent, decl.prop, value)) return;
@@ -74,8 +88,16 @@ module.exports = postcss.plugin("postcss-vwtorem", options => {
 
     if (opts.mediaQuery) {
       css.walkAtRules("media", rule => {
-        if (rule.params.indexOf("vw") === -1) return;
-        rule.params = rule.params.replace(pxRegex, pxReplace);
+        if (
+          rule.params.indexOf("vw") === -1 &&
+          rule.params.indexOf("rpx") === -1
+        )
+          return;
+        if (rule.params.indexOf("vw") !== -1) {
+          rule.params = rule.params.replace(pxRegex, pxReplace);
+        } else {
+          rule.params = rule.params.replace(rpxRegex, rpxReplace);
+        }
       });
     }
   };
@@ -108,6 +130,16 @@ function createPxReplace(rootValue, unitPrecision, minPixelValue, opts) {
     const { viewportWidth } = opts; // 转成vw时px的屏幕宽度
     const viewportVal = parseFloat($1);
     const pixels = (viewportVal / 100) * viewportWidth; // 先转成px
+    if (pixels < minPixelValue) return m;
+    const fixedVal = toFixed(pixels / rootValue, unitPrecision);
+    return fixedVal === 0 ? "0" : fixedVal + "rem";
+  };
+}
+function createRpxReplace(rootValue, unitPrecision, minPixelValue) {
+  return (m, $1) => {
+    console.log("$1: ", $1);
+    if (!$1) return m;
+    const pixels = parseFloat($1) * 2;
     if (pixels < minPixelValue) return m;
     const fixedVal = toFixed(pixels / rootValue, unitPrecision);
     return fixedVal === 0 ? "0" : fixedVal + "rem";
