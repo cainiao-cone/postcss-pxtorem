@@ -1,5 +1,5 @@
 const postcss = require("postcss");
-const pxRegex = require("./lib/pixel-unit-regex");
+const vwRegex = require("./lib/pixel-unit-regex");
 const rpxRegex = require("./lib/rpixel-unit-regex");
 const filterPropList = require("./lib/filter-prop-list");
 const type = require("./lib/type");
@@ -46,7 +46,7 @@ module.exports = postcss.plugin("postcss-vwtorem", options => {
       typeof opts.rootValue === "function"
         ? opts.rootValue(css.source.input)
         : opts.rootValue;
-    const pxReplace = createPxReplace(
+    const vwReplace = createVwReplace(
       rootValue,
       opts.unitPrecision,
       opts.minPixelValue,
@@ -68,7 +68,7 @@ module.exports = postcss.plugin("postcss-vwtorem", options => {
 
       let value = "";
       if (decl.value.indexOf("vw") !== -1) {
-        value = decl.value.replace(pxRegex, pxReplace);
+        value = decl.value.replace(vwRegex, vwReplace);
       } else {
         value = decl.value.replace(rpxRegex, rpxReplace);
       }
@@ -91,7 +91,7 @@ module.exports = postcss.plugin("postcss-vwtorem", options => {
         )
           return;
         if (rule.params.indexOf("vw") !== -1) {
-          rule.params = rule.params.replace(pxRegex, pxReplace);
+          rule.params = rule.params.replace(vwRegex, vwReplace);
         } else {
           rule.params = rule.params.replace(rpxRegex, rpxReplace);
         }
@@ -121,7 +121,7 @@ function convertLegacyOptions(options) {
   });
 }
 
-function createPxReplace(rootValue, unitPrecision, minPixelValue, opts) {
+function createVwReplace(rootValue, unitPrecision, minPixelValue, opts) {
   return (m, $1) => {
     if (!$1) return m;
     const { viewportWidth } = opts; // 转成vw时px的屏幕宽度
