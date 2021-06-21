@@ -135,7 +135,7 @@ function createVwReplace(rootValue, unitPrecision, minPixelValue, opts) {
 function createRpxReplace(rootValue, unitPrecision, minPixelValue) {
   return (m, $1) => {
     if (!$1) return m;
-    const pixels = parseFloat($1) * 2;
+    const pixels = parseFloat($1) / 2;
     if (pixels < minPixelValue) return m;
     const fixedVal = toFixed(pixels / rootValue, unitPrecision);
     return fixedVal === 0 ? "0" : fixedVal + "rem";

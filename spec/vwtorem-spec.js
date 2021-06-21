@@ -24,7 +24,7 @@ describe("vwtorem", function() {
 
   it("should replace the rpx unit with rem", function() {
     var input = "h1 { font-size: 32rpx; }";
-    var output = "h1 { font-size: 4rem; }";
+    var output = "h1 { font-size: 1rem; }";
     var processed = postcss(vwtorem()).process(input).css;
 
     expect(processed).toBe(output);
