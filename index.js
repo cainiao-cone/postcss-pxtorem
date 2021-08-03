@@ -5,7 +5,7 @@ const filterPropList = require("./lib/filter-prop-list");
 const type = require("./lib/type");
 
 const defaults = {
-  viewportWidth: 375, //px转vw时的宽度设置是多少
+  viewportWidth: 750, //px转vw时的宽度设置是多少
   rootValue: 16,
   unitPrecision: 5,
   selectorBlackList: [],
