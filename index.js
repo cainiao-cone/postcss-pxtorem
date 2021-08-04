@@ -5,7 +5,7 @@ const filterPropList = require("./lib/filter-prop-list");
 const type = require("./lib/type");
 
 const defaults = {
-  viewportWidth: 750, //px转vw时的宽度设置是多少
+  viewportWidth: 375, //px转vw时的宽度设置是多少
   rootValue: 16,
   unitPrecision: 5,
   selectorBlackList: [],
@@ -55,7 +55,8 @@ module.exports = postcss.plugin("postcss-vwtorem", options => {
     const rpxReplace = createRpxReplace(
       rootValue,
       opts.unitPrecision,
-      opts.minPixelValue
+      opts.minPixelValue,
+      opts
     );
 
     css.walkDecls((decl, i) => {
@@ -132,10 +133,13 @@ function createVwReplace(rootValue, unitPrecision, minPixelValue, opts) {
     return fixedVal === 0 ? "0" : fixedVal + "rem";
   };
 }
-function createRpxReplace(rootValue, unitPrecision, minPixelValue) {
+function createRpxReplace(rootValue, unitPrecision, minPixelValue, opts) {
   return (m, $1) => {
     if (!$1) return m;
-    const pixels = parseFloat($1);
+    const { viewportWidth } = opts;
+    // rpx是以750开发的，转成viewportWidth对应的值
+    const rpixels = parseFloat($1);
+    const pixels = rpixels / (750 / viewportWidth);
     if (pixels < minPixelValue) return m;
     const fixedVal = toFixed(pixels / rootValue, unitPrecision);
     return fixedVal === 0 ? "0" : fixedVal + "rem";
