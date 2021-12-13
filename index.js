@@ -1,11 +1,10 @@
-const postcss = require("postcss");
 const vwRegex = require("./lib/pixel-unit-regex");
 const rpxRegex = require("./lib/rpixel-unit-regex");
 const filterPropList = require("./lib/filter-prop-list");
 const type = require("./lib/type");
 
 const defaults = {
-  viewportWidth: 375, //px转vw时的宽度设置是多少
+  viewportWidth: 375, //px转vw时的宽度设置是多少. 改成750测试用例通过，测试用例太多了，标准是375，不改了
   rootValue: 16,
   unitPrecision: 5,
   selectorBlackList: [],
@@ -24,82 +23,6 @@ const legacyOptions = {
   media_query: "mediaQuery",
   propWhiteList: "propList"
 };
-
-module.exports = postcss.plugin("postcss-vwtorem", options => {
-  convertLegacyOptions(options);
-  const opts = Object.assign({}, defaults, options);
-  const satisfyPropList = createPropListMatcher(opts.propList);
-
-  return css => {
-    const exclude = opts.exclude;
-    const filePath = css.source.input.file;
-    if (
-      exclude &&
-      ((type.isFunction(exclude) && exclude(filePath)) ||
-        (type.isString(exclude) && filePath.indexOf(exclude) !== -1) ||
-        filePath.match(exclude) !== null)
-    ) {
-      return;
-    }
-
-    const rootValue =
-      typeof opts.rootValue === "function"
-        ? opts.rootValue(css.source.input)
-        : opts.rootValue;
-    const vwReplace = createVwReplace(
-      rootValue,
-      opts.unitPrecision,
-      opts.minPixelValue,
-      opts
-    );
-    const rpxReplace = createRpxReplace(
-      rootValue,
-      opts.unitPrecision,
-      opts.minPixelValue,
-      opts
-    );
-
-    css.walkDecls((decl, i) => {
-      if (
-        (decl.value.indexOf("vw") === -1 && decl.value.indexOf("rpx") === -1) ||
-        !satisfyPropList(decl.prop) ||
-        blacklistedSelector(opts.selectorBlackList, decl.parent.selector)
-      )
-        return;
-
-      let value = "";
-      if (decl.value.indexOf("vw") !== -1) {
-        value = decl.value.replace(vwRegex, vwReplace);
-      } else {
-        value = decl.value.replace(rpxRegex, rpxReplace);
-      }
-
-      // if rem unit already exists, do not add or replace
-      if (declarationExists(decl.parent, decl.prop, value)) return;
-
-      if (opts.replace) {
-        decl.value = value;
-      } else {
-        decl.parent.insertAfter(i, decl.clone({ value: value }));
-      }
-    });
-
-    if (opts.mediaQuery) {
-      css.walkAtRules("media", rule => {
-        if (
-          rule.params.indexOf("vw") === -1 &&
-          rule.params.indexOf("rpx") === -1
-        )
-          return;
-        if (rule.params.indexOf("vw") !== -1) {
-          rule.params = rule.params.replace(vwRegex, vwReplace);
-        } else {
-          rule.params = rule.params.replace(rpxRegex, rpxReplace);
-        }
-      });
-    }
-  };
-});
 
 function convertLegacyOptions(options) {
   if (typeof options !== "object") return;
@@ -208,3 +131,88 @@ function createPropListMatcher(propList) {
     );
   };
 }
+
+module.exports = (options = {}) => {
+  convertLegacyOptions(options);
+  const opts = Object.assign({}, defaults, options);
+  const satisfyPropList = createPropListMatcher(opts.propList);
+  const exclude = opts.exclude;
+  let isExcludeFile = false;
+  let vwReplace,rpxReplace;
+  return {
+    postcssPlugin: "postcss-vwtorem",
+    Once(css) {
+      const filePath = css.source.input.file;
+      if (
+        exclude &&
+        ((type.isFunction(exclude) && exclude(filePath)) ||
+          (type.isString(exclude) && filePath.indexOf(exclude) !== -1) ||
+          filePath.match(exclude) !== null)
+      ) {
+        isExcludeFile = true;
+      } else {
+        isExcludeFile = false;
+      }
+
+      const rootValue =
+        typeof opts.rootValue === "function"
+          ? opts.rootValue(css.source.input)
+          : opts.rootValue;
+      vwReplace = createVwReplace(
+        rootValue,
+        opts.unitPrecision,
+        opts.minPixelValue,
+        opts
+      );
+      rpxReplace = createRpxReplace(
+        rootValue,
+        opts.unitPrecision,
+        opts.minPixelValue,
+        opts
+      );
+    },
+    Declaration(decl) {
+      if (isExcludeFile) return;
+
+      if (
+        (decl.value.indexOf("vw") === -1 && decl.value.indexOf("rpx") === -1) ||
+        !satisfyPropList(decl.prop) ||
+        blacklistedSelector(opts.selectorBlackList, decl.parent.selector)
+      )
+        return;
+
+      let value = "";
+      if (decl.value.indexOf("vw") !== -1) {
+        value = decl.value.replace(vwRegex, vwReplace);
+      } else {
+        value = decl.value.replace(rpxRegex, rpxReplace);
+      }
+
+      // if rem unit already exists, do not add or replace
+      if (declarationExists(decl.parent, decl.prop, value)) return;
+
+      if (opts.replace) {
+        decl.value = value;
+      } else {
+        decl.cloneAfter({ value: value });
+      }
+    },
+    AtRule(atRule) {
+      if (isExcludeFile) return;
+
+      if (opts.mediaQuery && atRule.name === "media") {
+        if (
+          atRule.params.indexOf("vw") === -1 &&
+          atRule.params.indexOf("rpx") === -1
+        )
+          return;
+        if (atRule.params.indexOf("vw") !== -1) {
+          atRule.params = atRule.params.replace(vwRegex, vwReplace);
+        } else {
+          atRule.params = atRule.params.replace(rpxRegex, rpxReplace);
+        }
+      }
+    }
+  };
+};
+module.exports.postcss = true;
